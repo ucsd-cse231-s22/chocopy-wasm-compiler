@@ -360,3 +360,64 @@ print(fact(5))
 ```
 
 Should print `120`
+
+## Milestone 2
+
+For milestone 2, we will be implementing free variables. Variables used within functions do not necessarily have to be local to the function. This includes implementing nonlocal, which allows mutability of nonlocal variables. We will implement this by capturing any variables as fields of functions. Functions will have a reference to their parents, allowing them to access variables in upper scopes.
+
+Our desired functionality is to have the following work, among other tests:
+
+```python
+def f(x: int):
+  def g():
+    nonlocal x
+    x = x + 1
+    print(x)
+  g()
+  g()
+f(5)
+```
+
+Should pass, yielding `6\n7`.
+
+Another feature we want to add is first-class methods. We want to be able to do the following:
+
+```python
+class A:
+    x: int = 0
+    def f(self: A, x: int):
+        self.x = self.x + x
+        print(self.x)
+
+f: Callable[[A, int], None] = A.f
+g: Callable[[int], None] = A().f
+
+a: A = A()
+
+f(a, 3)
+f(a, 3)
+g(3)
+g(3)
+```
+
+This should print `3\n6\n3\n6`. The way we will accomplish this is by transforming it to the following:
+
+```python
+class A:
+    x: int = 0
+    def f(self: A, x: int):
+        self.x = self.x + x
+        print(self.x)
+
+f: Callable[[A, int], None] = A.f
+__g: A = A()
+g: Callable[[int], None] = lambda x: A.f(__g, x)
+a: A = A()
+
+f(a, 3)
+f(a, 3)
+g(3)
+g(3)
+```
+
+By wrapping it in a lambda, we bind the first argument of the method to the object of the lookup expression, evaluated before creating the closure and passed as a free (implicit) variable.
